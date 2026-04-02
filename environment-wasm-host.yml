@@ -1,6 +1,7 @@
 name: xeus-r-wasm-host
 channels:
-  - https://repo.prefix.dev/emscripten-forge-dev
+  - https://repo.prefix.dev/ck-emscripten-forge-dev
+  - https://repo.prefix.dev/emscripten-forge-4x
   - conda-forge
 dependencies:
   # Host dependencies
@@ -14,7 +15,7 @@ dependencies:
   - bzip2
   - libiconv
   - libflang
-  - r-base ==4.5.1
+  - r-base ==4.5.2
   # Run dependencies
   - r-rlang
   - r-evaluate
