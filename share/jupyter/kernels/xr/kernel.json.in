@@ -9,8 +9,7 @@
   "metadata": {
     "debugger": false,
     "shared": {
-      "libRblas.so": "lib/R/lib/libRblas.so",
-      "libRlapack.so": "lib/R/lib/libRlapack.so"
+@XEUS_R_SHARED_LIBS@
     }
   },
   "kernel_protocol_version": "5.6.0",

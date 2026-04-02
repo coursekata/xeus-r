@@ -128,6 +128,21 @@ endif ()
 
 get_filename_component(XEUS_R_LD_LIBRARY_PATH "${R_LIBRARY_BASE}" DIRECTORY)
 
+# Detect WASM shared libraries (side modules) for kernel.json.
+# R built with --enable-R-shlib produces libR.so which dynamically links
+# to zlib, so both libR.so and libz.so must be loaded as side modules.
+if(EMSCRIPTEN AND EXISTS "${CMAKE_PREFIX_PATH}/lib/R/lib/libR.so")
+    set(XEUS_R_SHARED_LIBS "\
+      \"libR.so\": \"lib/R/lib/libR.so\",\n\
+      \"libRblas.so\": \"lib/R/lib/libRblas.so\",\n\
+      \"libRlapack.so\": \"lib/R/lib/libRlapack.so\",\n\
+      \"libz.so\": \"lib/libz.so\"")
+else()
+    set(XEUS_R_SHARED_LIBS "\
+      \"libRblas.so\": \"lib/R/lib/libRblas.so\",\n\
+      \"libRlapack.so\": \"lib/R/lib/libRlapack.so\"")
+endif()
+
 if (MSVC)
 configure_file (
     "${CMAKE_CURRENT_SOURCE_DIR}/share/jupyter/kernels/xr/kernel-win.json.in"
