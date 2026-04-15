@@ -104,7 +104,12 @@ init_options <- function() {
 
     jupyter.rich_display = TRUE,
     jupyter.base_display_func = display_data,
-    jupyter.clear_output_func = clear_output
+    jupyter.clear_output_func = clear_output,
+
+    repr.plot.width = 8,
+    repr.plot.height = 6,
+    repr.plot.pointsize = 18,
+    repr.plot.res = 180
   )
 
   repos <- getOption('repos')
