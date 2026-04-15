@@ -41,6 +41,10 @@ share/jupyter/kernels/xr/kernel.json
 # Build directory
 build/
 
+# JupyterLite build output + doit cache
+dist/
+.jupyterlite.doit.db
+
 # vscode
 .vscode
 __pycache__
