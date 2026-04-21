@@ -18,8 +18,8 @@ for arg in "$@"; do
 done
 
 MAMBA_ROOT_PREFIX="${MAMBA_ROOT_PREFIX:-$HOME/micromamba}"
-BUILD_ENV="xeus-r-wasm-build"
-HOST_ENV="xeus-r-wasm-host"
+BUILD_ENV="${BUILD_ENV:-xeus-r-wasm-build}"
+HOST_ENV="${HOST_ENV:-xeus-r-wasm-host}"
 BUILD_PREFIX="$MAMBA_ROOT_PREFIX/envs/$BUILD_ENV"
 PREFIX="$MAMBA_ROOT_PREFIX/envs/$HOST_ENV"
 
@@ -34,26 +34,6 @@ fi
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO_ROOT"
-
-LIBRARIES=(jsonlite rlang base64enc digest fastmap htmltools cli glue vctrs)
-
-# Track whether we swapped .so files so we can restore on failure
-LIBS_SWAPPED=false
-
-cleanup() {
-  if $LIBS_SWAPPED; then
-    echo "--- Restoring wasm .so files ---"
-    for lib in "${LIBRARIES[@]}"; do
-      local so="$PREFIX/lib/R/library/$lib/libs/$lib.so"
-      if [[ -f "$so.bak" ]]; then
-        rm -f "$so"
-        mv "$so.bak" "$so"
-      fi
-    done
-    LIBS_SWAPPED=false
-  fi
-}
-trap cleanup EXIT
 
 # ---- Step 1: Recreate conda environments ---------------------------------
 if ! $SKIP_ENVS; then
@@ -84,32 +64,17 @@ echo "=== Patching Makeconf ==="
 echo "R_HOME=${PREFIX}/lib/R"                  > "$BUILD_PREFIX/lib/R/etc/Makeconf"
 cat "$PREFIX/lib/R/etc/Makeconf"              >> "$BUILD_PREFIX/lib/R/etc/Makeconf"
 
-# ---- Step 3: Swap .so files (wasm → native for R CMD INSTALL) -------------
-echo "=== Swapping .so files (wasm → native) ==="
-for lib in "${LIBRARIES[@]}"; do
-  so="$PREFIX/lib/R/library/$lib/libs/$lib.so"
-  echo "  Backup $lib"
-  mv "$so" "$so.bak"
-  cp "$BUILD_PREFIX/lib/R/library/$lib/libs/$lib.so" "$so"
-done
-LIBS_SWAPPED=true
-
-# ---- Step 4: Install hera ------------------------------------------------
+# ---- Step 3: Install hera ------------------------------------------------
+# Install into the build env's library (where R finds consistent native deps
+# for lazy-load prep), then copy the pure-R package dir into the host env.
 echo "=== Installing hera ==="
 R_PROFILE_USER="" "$BUILD_PREFIX/bin/R" CMD INSTALL ./hera \
   --no-byte-compile --no-test-load \
-  --library="$PREFIX/lib/R/library/"
+  --library="$BUILD_PREFIX/lib/R/library/"
+rm -rf "$PREFIX/lib/R/library/hera"
+cp -r "$BUILD_PREFIX/lib/R/library/hera" "$PREFIX/lib/R/library/hera"
 
-# ---- Step 5: Restore .so files -------------------------------------------
-echo "=== Restoring wasm .so files ==="
-for lib in "${LIBRARIES[@]}"; do
-  so="$PREFIX/lib/R/library/$lib/libs/$lib.so"
-  rm "$so"
-  mv "$so.bak" "$so"
-done
-LIBS_SWAPPED=false
-
-# ---- Step 6: Build xeus-r ------------------------------------------------
+# ---- Step 4: Build xeus-r ------------------------------------------------
 echo "=== Building xeus-r ==="
 
 # Out-of-source build in build/ (gitignored)
@@ -136,7 +101,7 @@ micromamba run -n "$BUILD_ENV" bash -c "
   emmake make -j $NCPUS install
 "
 
-# ---- Step 7: Build JupyterLite site --------------------------------------
+# ---- Step 5: Build JupyterLite site --------------------------------------
 echo "=== Building JupyterLite site ==="
 rm -rf dist/
 
@@ -150,7 +115,7 @@ micromamba run -n "$BUILD_ENV" \
     --contents notebooks/xeus-r.ipynb \
     --output-dir dist
 
-# ---- Step 8: Copy shared libs workaround ---------------------------------
+# ---- Step 6: Copy shared libs workaround ---------------------------------
 echo "=== Copying shared libs (jupyterlite-xeus path workaround) ==="
 KERNEL_DIR="dist/xeus/$HOST_ENV/xr"
 STATIC_DIR="dist/extensions/@jupyterlite/xeus-extension/static"
@@ -164,7 +129,7 @@ for lib in libR.so libRblas.so libRlapack.so libz.so; do
   fi
 done
 
-# ---- Step 9: Serve -------------------------------------------------------
+# ---- Step 7: Serve -------------------------------------------------------
 echo ""
 echo "=== Build complete. Serving at http://localhost:8888 ==="
 python3 -m http.server 8888 --directory dist
