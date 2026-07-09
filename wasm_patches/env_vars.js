@@ -8,4 +8,6 @@ Module["preRun"] = () => {
     ENV["R_ENVIRON"] = "/lib/R/etc/Renviron";
     ENV["EDITOR"] = "vim";
     ENV["R_ENABLE_JIT"] = "0";
+    // Not an R startup file: the kernel runs R with --no-environ.
+    ENV["FONTCONFIG_FILE"] = "/lib/R/etc/fonts.conf";
 };
